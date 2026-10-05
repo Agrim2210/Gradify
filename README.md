@@ -62,54 +62,6 @@ Gradify is a scalable, modern educational platform architected around **Clean Ar
 
 ---
 
-## 📂 Project Architecture
-
-Gradify is structured cleanly as a monorepo with distinct **Backend** and **Frontend** boundaries:
-
-`	ext
-Gradify/
-├── Backend/                         # Complete FastAPI Backend (Clean Architecture / DDD)
-│   ├── app/
-│   │   ├── core/                    # Global configs, database engines, shared exceptions
-│   │   ├── modules/
-│   │   │   ├── auth/                # Authentication, user entities, Outbox models & workers
-│   │   │   │   ├── application/     # Use-cases (login, register, email verification)
-│   │   │   │   ├── domain/          # Entities, value objects, repository interfaces
-│   │   │   │   ├── infra/           # SQLAlchemy models, Argon2 security, Celery email tasks
-│   │   │   │   └── bootstrap/       # Dependency injection containers
-│   │   │   ├── documents/           # Assignments, submissions, grades & notes
-│   │   │   │   ├── api/             # Document & assignment routing, schemas
-│   │   │   │   ├── application/     # AssignmentService, grade calculation, upload use-cases
-│   │   │   │   ├── domain/          # Note & assignment domain rules
-│   │   │   │   └── infra/           # Backblaze B2 client, SQL repositories
-│   │   │   └── workspace/           # Workspaces, memberships, invitations & classrooms
-│   │   │       ├── api/             # Workspace context routes, role management
-│   │   │       ├── application/     # Creation, invite orchestration, classroom use-cases
-│   │   │       └── infra/           # Membership, invitation, and classroom database models
-│   │   ├── shared/                  # Shared email abstractions, JWT providers, mixins
-│   │   └── main.py                  # FastAPI application bootstrap & CORS setup
-│   ├── head/                        # Alembic database migration scripts & versions
-│   ├── tests/                       # Pytest test suite (unit and integration tests)
-│   ├── .env.example                 # Sanitized configuration template
-│   ├── alembic.ini                  # Alembic database configuration
-│   ├── pytest.ini                   # Test suite runner configuration
-│   ├── requirements.txt             # Backend Python dependencies
-│   └── CELERY.md                    # Celery & Outbox operational documentation
-├── Frontend/                        # Modern React 19 + TypeScript + Vite SPA
-│   ├── src/
-│   │   ├── components/              # ClassroomDashboard, Modals, Navbar, WorkspaceCard
-│   │   ├── services/                # Axios API layer and TypeScript contracts
-│   │   ├── App.tsx                  # Core state & routing orchestration
-│   │   └── main.tsx                 # Frontend application entry point
-│   ├── package.json                 # Frontend dependencies & scripts
-│   ├── tailwind.config.js           # Tailwind CSS configuration
-│   └── vite.config.ts               # Vite configuration
-├── .gitignore                       # Root gitignore protecting all secrets & build artifacts
-└── README.md                        # Master repository documentation
-`
-
----
-
 ## 🚀 Getting Started
 
 ### 1. Prerequisites
