@@ -1,0 +1,100 @@
+# ===========================
+# FastAPI Core
+# ===========================
+fastapi
+uvicorn[standard]
+starlette
+
+# ===========================
+# Database
+# ===========================
+sqlalchemy>=2.0
+alembic
+asyncpg
+psycopg2-binary
+
+# ===========================
+# Redis
+# ===========================
+redis[hiredis]
+
+# ===========================
+# Authentication
+# ===========================
+python-jose[cryptography]
+PyJWT
+passlib[bcrypt]
+bcrypt
+python-multipart
+
+# ===========================
+# Validation & Settings
+# ===========================
+pydantic
+pydantic-settings
+email-validator
+python-dotenv
+
+# ===========================
+# HTTP Client
+# ===========================
+httpx
+aiofiles
+
+# ===========================
+# Serialization
+# ===========================
+orjson
+
+# ===========================
+# Utilities
+# ===========================
+python-dateutil
+tenacity
+
+# ===========================
+# Logging
+# ===========================
+loguru
+
+# ===========================
+# Development
+# ===========================
+watchfiles
+rich
+ipython
+
+# ===========================
+# Testing
+# ===========================
+pytest
+pytest-asyncio
+pytest-cov
+faker
+factory-boy
+
+# ===========================
+# Type Checking & Linting
+# ===========================
+mypy
+ruff
+black
+isort
+
+# ===========================
+# Optional Background Tasks
+# ===========================
+celery[redis]
+flower
+aiosmtplib
+
+# ===========================
+# Optional Scheduler
+# ===========================
+apscheduler
+
+# ===========================
+# Optional Monitoring
+# ===========================
+prometheus-fastapi-instrumentator
+boto3
