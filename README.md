@@ -64,42 +64,50 @@ Gradify is a scalable, modern educational platform architected around **Clean Ar
 
 ## 📂 Project Architecture
 
-The backend adheres strictly to **Clean Architecture / DDD**:
+Gradify is structured cleanly as a monorepo with distinct **Backend** and **Frontend** boundaries:
 
-\\	ext
+`	ext
 Gradify/
-├── app/
-│   ├── core/                        # Global configs, database engines, shared exceptions
-│   ├── modules/
-│   │   ├── auth/                    # Authentication, user entities, Outbox models & workers
-│   │   │   ├── application/         # Use-cases (login, register, email verification)
-│   │   │   ├── domain/              # Entities, value objects, repository interfaces
-│   │   │   ├── infra/               # SQLAlchemy models, Argon2 security, Celery email tasks
-│   │   │   └── bootstrap/           # Dependency injection containers
-│   │   ├── documents/               # Assignments, submissions, grades & notes
-│   │   │   ├── api/                 # Document & assignment routing, schemas
-│   │   │   ├── application/         # AssignmentService, grade calculation, upload use-cases
-│   │   │   ├── domain/              # Note & assignment domain rules
-│   │   │   └── infra/               # Backblaze B2 client, SQL repositories
-│   │   └── workspace/               # Workspaces, memberships, invitations & classrooms
-│   │       ├── api/                 # Workspace context routes, role management
-│   │       ├── application/         # Creation, invite orchestration, classroom use-cases
-│   │       └── infra/               # Membership, invitation, and classroom database models
-│   ├── shared/                      # Shared email abstractions, JWT providers, mixins
-│   └── main.py                      # FastAPI application bootstrap & CORS setup
-├── Frontend/                        # React 19 + TypeScript + Vite SPA
+├── Backend/                         # Complete FastAPI Backend (Clean Architecture / DDD)
+│   ├── app/
+│   │   ├── core/                    # Global configs, database engines, shared exceptions
+│   │   ├── modules/
+│   │   │   ├── auth/                # Authentication, user entities, Outbox models & workers
+│   │   │   │   ├── application/     # Use-cases (login, register, email verification)
+│   │   │   │   ├── domain/          # Entities, value objects, repository interfaces
+│   │   │   │   ├── infra/           # SQLAlchemy models, Argon2 security, Celery email tasks
+│   │   │   │   └── bootstrap/       # Dependency injection containers
+│   │   │   ├── documents/           # Assignments, submissions, grades & notes
+│   │   │   │   ├── api/             # Document & assignment routing, schemas
+│   │   │   │   ├── application/     # AssignmentService, grade calculation, upload use-cases
+│   │   │   │   ├── domain/          # Note & assignment domain rules
+│   │   │   │   └── infra/           # Backblaze B2 client, SQL repositories
+│   │   │   └── workspace/           # Workspaces, memberships, invitations & classrooms
+│   │   │       ├── api/             # Workspace context routes, role management
+│   │   │       ├── application/     # Creation, invite orchestration, classroom use-cases
+│   │   │       └── infra/           # Membership, invitation, and classroom database models
+│   │   ├── shared/                  # Shared email abstractions, JWT providers, mixins
+│   │   └── main.py                  # FastAPI application bootstrap & CORS setup
+│   ├── head/                        # Alembic database migration scripts & versions
+│   ├── tests/                       # Pytest test suite (unit and integration tests)
+│   ├── .env.example                 # Sanitized configuration template
+│   ├── alembic.ini                  # Alembic database configuration
+│   ├── pytest.ini                   # Test suite runner configuration
+│   ├── requirements.txt             # Backend Python dependencies
+│   └── CELERY.md                    # Celery & Outbox operational documentation
+├── Frontend/                        # Modern React 19 + TypeScript + Vite SPA
 │   ├── src/
 │   │   ├── components/              # ClassroomDashboard, Modals, Navbar, WorkspaceCard
 │   │   ├── services/                # Axios API layer and TypeScript contracts
 │   │   ├── App.tsx                  # Core state & routing orchestration
 │   │   └── main.tsx                 # Frontend application entry point
-├── head/                            # Alembic database migration scripts
-├── tests/                           # Pytest test suite (unit and integration tests)
-├── .env.example                     # Sanitized configuration template
-├── pytest.ini                       # Test suite runner configuration
-├── requirements.txt                 # Backend Python dependencies
-└── CELERY.md                        # Celery & Outbox operational documentation
-\
+│   ├── package.json                 # Frontend dependencies & scripts
+│   ├── tailwind.config.js           # Tailwind CSS configuration
+│   └── vite.config.ts               # Vite configuration
+├── .gitignore                       # Root gitignore protecting all secrets & build artifacts
+└── README.md                        # Master repository documentation
+`
+
 ---
 
 ## 🚀 Getting Started
@@ -114,21 +122,49 @@ Gradify/
 
 ### 2. Environment Configuration
 
-Clone the repository and copy the environment template:
+Clone the repository and copy the environment template into Backend/:
 
-\\ash
+`ash
 git clone https://github.com/Agrim2210/Gradify.git
-cd Gradify
+cd Gradify/Backend
 cp .env.example .env
-\
-Configure your credentials in \.env\ (see \.env.example\ for required keys).
+`
+
+Open Backend/.env and configure your credentials:
+`env
+# Database
+DATABASE_URL=postgresql+asyncpg://postgres:your_password@localhost:5432/gradify
+
+# Security
+SECRET_KEY=generate-a-strong-random-secret-key-here
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+# Backblaze B2 Object Storage
+B2_APPLICATION_KEY_ID=your_key_id
+B2_APPLICATION_KEY=your_app_key
+B2_BUCKET_NAME=your_bucket_name
+B2_ENDPOINT_URL=https://s3.us-east-005.backblazeb2.com
+
+# SMTP Email Dispatch
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+EMAIL_FROM=your_email@gmail.com
+
+# Celery Task Broker
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+`
 
 ---
 
 ### 3. Backend Setup
 
-1. **Create and activate a virtual environment**:
-   \\ash
+1. **Navigate to the Backend directory and create a virtual environment**:
+   `ash
+   cd Gradify/Backend
+
    # Windows PowerShell
    python -m venv myenv
    .\myenv\Scripts\Activate.ps1
@@ -136,67 +172,83 @@ Configure your credentials in \.env\ (see \.env.example\ for required keys).
    # Linux / macOS
    python3 -m venv myenv
    source myenv/bin/activate
-   \
+   `
+
 2. **Install dependencies**:
-   \\ash
+   `ash
    pip install -r requirements.txt
-   \
+   `
+
 3. **Run database migrations**:
-   \\ash
+   `ash
    alembic upgrade head
-   \
+   `
+
 4. **Start the API server**:
-   \\ash
+   `ash
    uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-   \   *FastAPI Swagger documentation will be available at \http://127.0.0.1:8000/docs\.*
+   `
+   *FastAPI Swagger documentation will be available at http://127.0.0.1:8000/docs.*
 
 ---
 
 ### 4. Celery Outbox Worker (Background Processing)
 
-In a separate terminal, launch the Celery worker to process email dispatch and outbox tasks:
+From the Backend/ directory, launch the Celery worker to process email dispatch and outbox tasks:
 
-\\ash
+`ash
 celery -A app.shared.infra.celery.app.celery_app worker --loglevel=info
-\
+`
+
 ---
 
 ### 5. Frontend Setup
 
 1. **Navigate to the frontend directory**:
-   \\ash
-   cd Frontend
-   \
+   `ash
+   cd Gradify/Frontend
+   `
+
 2. **Install dependencies**:
-   \\ash
+   `ash
    npm install
-   \
+   `
+
 3. **Run development server**:
-   \\ash
+   `ash
    npm run dev
-   \   *The application will open at \http://localhost:5173\.*
+   `
+   *The application will open at http://localhost:5173.*
 
 4. **Build for production**:
-   \\ash
+   `ash
    npm run build
-   \
+   `
+
 ---
 
 ## 🧪 Testing
 
-Run backend tests using Pytest:
+Run backend tests using Pytest from the Backend/ directory:
 
-\\ash
+`ash
+cd Backend
 pytest tests/
-\
+`
+
+To run with coverage reporting:
+`ash
+pytest --cov=app tests/
+`
+
 ---
 
 ## 🤝 Contribution Guidelines
 
 1. Fork the Project
-2. Create your Feature Branch (\git checkout -b feature/AmazingFeature\)
-3. Commit your Changes (\git commit -m 'feat: add some amazing feature'\)
-4. Push to the Branch (\git push origin feature/AmazingFeature\)
+2. Create your Feature Branch (git checkout -b feature/AmazingFeature)
+3. Commit your Changes (git commit -m 'feat: add some amazing feature')
+4. Push to the Branch (git push origin feature/AmazingFeature)
 5. Open a Pull Request
 
 ---
