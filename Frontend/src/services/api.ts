@@ -153,7 +153,12 @@ export interface GradebookResponse {
   };
 }
 
-const API_BASE = "/api";
+const rawApiUrl = (import.meta as any).env?.VITE_API_URL;
+const API_BASE = rawApiUrl
+  ? (rawApiUrl.startsWith("http://") || rawApiUrl.startsWith("https://")
+      ? rawApiUrl.replace(/\/+$/, "")
+      : `https://${rawApiUrl.replace(/\/+$/, "")}`)
+  : "/api";
 
 export const api = {
   // 1. Identity & Registration

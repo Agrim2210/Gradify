@@ -8,6 +8,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Celery](https://img.shields.io/badge/Celery-5.4-37814A?style=flat&logo=celery&logoColor=white)](https://docs.celeryq.dev)
+[![Render](https://img.shields.io/badge/Deploy%20to-Render-46E3B7?style=flat&logo=render&logoColor=white)](https://render.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Gradify is a scalable, modern educational platform architected around **Clean Architecture / Domain-Driven Design (DDD)** principles. It powers end-to-end institutional workflows—from workspace creation and multi-role member onboarding (Admin, Teacher, Student) to dynamic classroom management, assignment lifecycle tracking, automated gradebooks, and secure document distribution.
@@ -51,7 +52,7 @@ Gradify is a scalable, modern educational platform architected around **Clean Ar
 | Domain | Technology | Description |
 | :--- | :--- | :--- |
 | **Backend Framework** | [FastAPI](https://fastapi.tiangolo.com/) | High-performance Python async REST API framework |
-| **Database & ORM** | [PostgreSQL](https://www.postgresql.org/) + [SQLAlchemy 2.0](https://www.sqlalchemy.org/) | Async database access via syncpg |
+| **Database & ORM** | [PostgreSQL](https://www.postgresql.org/) + [SQLAlchemy 2.0](https://www.sqlalchemy.org/) | Async database access via `asyncpg` |
 | **Migrations** | [Alembic](https://alembic.sqlalchemy.org/) | Schema migration tracking and revision management |
 | **Task Queue** | [Celery](https://docs.celeryq.dev/) + [Redis](https://redis.io/) | Outbox worker and asynchronous mail dispatch |
 | **Cloud Storage** | [Backblaze B2](https://www.backblaze.com/b2/) | S3-compatible cloud object storage for notes and assignments |
@@ -62,7 +63,29 @@ Gradify is a scalable, modern educational platform architected around **Clean Ar
 
 ---
 
-## 🚀 Getting Started
+## ☁️ Deploying to Render (Blueprint)
+
+Gradify is fully pre-configured for automated deployment on [Render](https://render.com) using the included [`render.yaml`](./render.yaml) blueprint specification.
+
+### 1. What Render Provisions Automatically:
+- **`gradify-db`**: Managed PostgreSQL Database.
+- **`gradify-redis`**: Managed Key-Value store for Celery/caching.
+- **`gradify-backend`**: FastAPI Web Service with automatic pre-deploy database migrations (`alembic upgrade head`), health check (`/health`), and dynamic PostgreSQL connection adapter.
+- **`gradify-frontend`**: React + Vite Static Site with global CDN distribution and SPA rewrite routing (`/*` -> `/index.html`).
+
+### 2. Steps to Deploy:
+1. Push your repository to **GitHub**.
+2. Go to the [Render Dashboard](https://dashboard.render.com/) and click **New +** ➔ **Blueprint**.
+3. Connect your **Gradify** repository.
+4. Render will parse `render.yaml` and display all resources to create.
+5. In the Render Dashboard, configure any secret credentials:
+   - `B2_APPLICATION_KEY_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET_NAME`, `B2_ENDPOINT_URL` (for file storage).
+   - `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_SENDER_EMAIL` (for email notifications).
+6. Click **Apply**. Render will automatically provision the database, run migrations, build the frontend, and deploy your services!
+
+---
+
+## 🚀 Local Development Setup
 
 ### 1. Prerequisites
 - **Python 3.11+**
@@ -74,133 +97,99 @@ Gradify is a scalable, modern educational platform architected around **Clean Ar
 
 ### 2. Environment Configuration
 
-Clone the repository and copy the environment template into Backend/:
+Clone the repository and set up environment files:
 
-`ash
+```bash
 git clone https://github.com/Agrim2210/Gradify.git
-cd Gradify/Backend
+cd Gradify
+
+# Setup Backend Environment
+cd Backend
 cp .env.example .env
-`
 
-Open Backend/.env and configure your credentials:
-`env
-# Database
-DATABASE_URL=postgresql+asyncpg://postgres:your_password@localhost:5432/gradify
+# Setup Frontend Environment
+cd ../Frontend
+cp .env.example .env
+```
 
-# Security
-SECRET_KEY=generate-a-strong-random-secret-key-here
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
-
-# Backblaze B2 Object Storage
-B2_APPLICATION_KEY_ID=your_key_id
-B2_APPLICATION_KEY=your_app_key
-B2_BUCKET_NAME=your_bucket_name
-B2_ENDPOINT_URL=https://s3.us-east-005.backblazeb2.com
-
-# SMTP Email Dispatch
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your_email@gmail.com
-SMTP_PASSWORD=your_app_password
-EMAIL_FROM=your_email@gmail.com
-
-# Celery Task Broker
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
-`
+Open `Backend/.env` and configure your credentials (DB, JWT, B2, SMTP, Celery).
 
 ---
 
 ### 3. Backend Setup
 
-1. **Navigate to the Backend directory and create a virtual environment**:
-   `ash
-   cd Gradify/Backend
+```bash
+cd Gradify/Backend
 
-   # Windows PowerShell
-   python -m venv myenv
-   .\myenv\Scripts\Activate.ps1
+# Create and activate virtual environment
+python -m venv myenv
+# Windows PowerShell:
+.\myenv\Scripts\Activate.ps1
+# Linux / macOS:
+source myenv/bin/activate
 
-   # Linux / macOS
-   python3 -m venv myenv
-   source myenv/bin/activate
-   `
+# Install dependencies
+pip install -r requirements.txt
 
-2. **Install dependencies**:
-   `ash
-   pip install -r requirements.txt
-   `
+# Run migrations
+alembic upgrade head
 
-3. **Run database migrations**:
-   `ash
-   alembic upgrade head
-   `
-
-4. **Start the API server**:
-   `ash
-   uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-   `
-   *FastAPI Swagger documentation will be available at http://127.0.0.1:8000/docs.*
+# Start API server
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+*FastAPI Swagger documentation will be available at `http://127.0.0.1:8000/docs`.*
 
 ---
 
-### 4. Celery Outbox Worker (Background Processing)
+### 4. Celery Outbox Worker (Optional)
 
-From the Backend/ directory, launch the Celery worker to process email dispatch and outbox tasks:
+In a separate terminal, launch the Celery worker from `Backend/`:
 
-`ash
+```bash
+cd Gradify/Backend
 celery -A app.shared.infra.celery.app.celery_app worker --loglevel=info
-`
+```
+*(Note: FastAPI also includes direct background dispatch for email verification and invitations).*
 
 ---
 
 ### 5. Frontend Setup
 
-1. **Navigate to the frontend directory**:
-   `ash
-   cd Gradify/Frontend
-   `
+```bash
+cd Gradify/Frontend
 
-2. **Install dependencies**:
-   `ash
-   npm install
-   `
+# Install dependencies
+npm install
 
-3. **Run development server**:
-   `ash
-   npm run dev
-   `
-   *The application will open at http://localhost:5173.*
-
-4. **Build for production**:
-   `ash
-   npm run build
-   `
+# Start development server
+npm run dev
+```
+*The application will open at `http://localhost:5173`.*
 
 ---
 
 ## 🧪 Testing
 
-Run backend tests using Pytest from the Backend/ directory:
+Run backend tests using Pytest from the `Backend/` directory:
 
-`ash
-cd Backend
+```bash
+cd Gradify/Backend
 pytest tests/
-`
+```
 
 To run with coverage reporting:
-`ash
+```bash
 pytest --cov=app tests/
-`
+```
 
 ---
 
 ## 🤝 Contribution Guidelines
 
 1. Fork the Project
-2. Create your Feature Branch (git checkout -b feature/AmazingFeature)
-3. Commit your Changes (git commit -m 'feat: add some amazing feature')
-4. Push to the Branch (git push origin feature/AmazingFeature)
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'feat: add some amazing feature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
 ---

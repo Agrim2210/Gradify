@@ -1,0 +1,143 @@
+services:
+  # ========================================================
+  # 1. Backend Web Service (FastAPI REST API)
+  # ========================================================
+  - type: web
+    name: gradify-backend
+    runtime: python
+    rootDir: Backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gradify-db
+          property: connectionString
+      - key: APP_NAME
+        value: Gradify
+      - key: APP_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 1440
+      - key: JWT_REFRESH_TOKEN_EXPIRE_DAYS
+        value: 30
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: gradify-frontend
+          property: host
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: gradify-redis
+          property: connectionString
+      - key: CELERY_OUTBOX_POLL_SECONDS
+        value: 5
+      - key: CELERY_OUTBOX_BATCH_SIZE
+        value: 100
+      # Backblaze B2 Object Storage (Documents, Assignments, Notes)
+      - key: B2_ENDPOINT_URL
+        sync: false
+      - key: B2_APPLICATION_KEY_ID
+        sync: false
+      - key: B2_APPLICATION_KEY
+        sync: false
+      - key: B2_BUCKET_NAME
+        sync: false
+      - key: B2_REGION_NAME
+        value: us-east-005
+      # SMTP Email Dispatch
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_SENDER_EMAIL
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+
+  # ========================================================
+  # 2. Frontend Static Site (React 19 + TypeScript + Vite)
+  # ========================================================
+  - type: web
+    name: gradify-frontend
+    runtime: static
+    rootDir: Frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: gradify-backend
+          property: host
+
+  # ========================================================
+  # 3. Redis Key-Value Store (Outbox & Cache)
+  # ========================================================
+  - type: redis
+    name: gradify-redis
+    ipAllowList: []
+    plan: free
+
+  # ========================================================
+  # 4. Celery Background Worker (Optional)
+  # Render background workers require a paid compute plan (starter).
+  # Uncomment the block below if you wish to run a dedicated worker.
+  # (Note: Gradify's Web Service also dispatches emails directly via FastAPI BackgroundTasks on free tier).
+  # ========================================================
+  # - type: worker
+  #   name: gradify-worker
+  #   runtime: python
+  #   rootDir: Backend
+  #   plan: starter
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: celery -A app.shared.infra.celery.app.celery_app worker --loglevel=info
+  #   envVars:
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: gradify-db
+  #         property: connectionString
+  #     - key: APP_NAME
+  #       value: Gradify
+  #     - key: APP_ENV
+  #       value: production
+  #     - key: PYTHON_VERSION
+  #       value: 3.11.9
+  #     - key: JWT_SECRET_KEY
+  #       fromService:
+  #         type: web
+  #         name: gradify-backend
+  #         property: envVar
+  #         envVarKey: JWT_SECRET_KEY
+  #     - key: REDIS_URL
+  #       fromService:
+  #         type: redis
+  #         name: gradify-redis
+  #         property: connectionString
+
+databases:
+  # ========================================================
+  # 5. Managed PostgreSQL Database
+  # ========================================================
+  - name: gradify-db
+    databaseName: gradify_db
+    user: gradify_user
+    plan: free
