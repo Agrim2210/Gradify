@@ -6,6 +6,7 @@ from app.modules.auth.api.schemas.signup_schema import SignUpSchema
 from app.modules.auth.infra.tasks.email_tasks import (
     deliver_verification_email_bg,
     deliver_direct_verification_email_bg,
+    deliver_password_reset_email_bg,
 )
 from app.modules.auth.domain.entities.verification_token import VerificationToken
 from app.modules.auth.bootstrap.dependencies import (
@@ -159,9 +160,17 @@ async def login(
 @route.post("/forgot-password")
 async def forgot_password(
     request: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
     use_case: RequestPasswordReset = Depends(get_request_password_reset_usecase),
 ):
-    await use_case.execute(request.email)
+    result = await use_case.execute(request.email)
+    if result and "email" in result and "reset_url" in result:
+        background_tasks.add_task(
+            deliver_password_reset_email_bg,
+            email=result["email"],
+            reset_url=result["reset_url"],
+            event_id=result.get("outbox_id"),
+        )
     return {"message": "If the email exists, a password reset link has been sent"}
 
 @route.post("/reset-password")

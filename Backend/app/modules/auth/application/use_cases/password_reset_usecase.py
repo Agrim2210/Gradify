@@ -20,10 +20,10 @@ class RequestPasswordReset:
         self.outbox_repo = outbox_repo
         self.uow = uow
 
-    async def execute(self, email: str) -> None:
+    async def execute(self, email: str) -> dict | None:
         user = await self.user_repo.get_by_email(email)
         if user is None:
-            return
+            return None
         raw_token = self.token_generator.generate_token()
         token = PasswordResetToken.create(user.id, self.token_hasher.hash_token(raw_token))
         reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={raw_token}"
@@ -32,6 +32,12 @@ class RequestPasswordReset:
             self.token_repo.add(token)
             self.outbox_repo.add(event)
             await self.uow.commit()
+            return {
+                "email": user.email,
+                "reset_url": reset_url,
+                "outbox_id": str(event.id),
+                "raw_token": raw_token,
+            }
         except Exception:
             await self.uow.rollback()
             raise

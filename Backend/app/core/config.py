@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     DB_NAME: str = "gradify_db"
     PORT: int = 8000
     REDIS_URL: str = "redis://localhost:6379/0"
+    EMAIL_DELIVERY_MODE: str = "direct"
+    ENABLE_INPROCESS_OUTBOX_POLLER: bool = True
     CELERY_OUTBOX_POLL_SECONDS: int = 5
     CELERY_OUTBOX_BATCH_SIZE: int = 100
     SMTP_HOST: str = "smtp.gmail.com"

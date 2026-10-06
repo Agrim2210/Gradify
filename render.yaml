@@ -44,6 +44,10 @@ services:
         value: 5
       - key: CELERY_OUTBOX_BATCH_SIZE
         value: 100
+      - key: EMAIL_DELIVERY_MODE
+        value: direct
+      - key: ENABLE_INPROCESS_OUTBOX_POLLER
+        value: "true"
       # Backblaze B2 Object Storage (Documents, Assignments, Notes)
       - key: B2_ENDPOINT_URL
         sync: false

@@ -131,6 +131,43 @@ async def deliver_classroom_invitation_email_bg(email: str, classroom_name: str,
 
 
 
+async def deliver_password_reset_email_bg(email: str, reset_url: str, event_id: str | None = None) -> None:
+    """Dispatches password reset email directly via FastAPI BackgroundTasks."""
+    try:
+        if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
+            print("[PASSWORD RESET ERROR] SMTP credentials not configured in settings")
+            return
+
+        sender = SMTPEmailSender(
+            host=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USERNAME,
+            password=settings.SMTP_PASSWORD,
+            sender_email=settings.SMTP_SENDER_EMAIL or settings.SMTP_USERNAME,
+        )
+        payload = Payload(
+            email=email,
+            reset_url=reset_url,
+        )
+        await sender.send_email(payload)
+        print(f"[PASSWORD RESET SUCCESS] Password reset email dispatched to {email}")
+
+        if event_id:
+            try:
+                async with SessionLocal() as session:
+                    repository = SQLAlchemyOutboxRepository(session)
+                    event = await repository.get_by_id(UUID(event_id))
+                    if event and event.status.value != "COMPLETED":
+                        event.mark_completed()
+                        await repository.update(event)
+                        await session.commit()
+            except Exception as db_err:
+                print(f"[RESET NOTE] Outbox record update note: {db_err}")
+    except Exception as e:
+        print(f"[PASSWORD RESET ERROR] Failed to send password reset email to {email}: {e}")
+        traceback.print_exc()
+
+
 @celery_app.task(
     name="auth.email.send_verification_email",
     bind=True,
