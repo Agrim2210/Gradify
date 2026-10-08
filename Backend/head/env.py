@@ -23,16 +23,16 @@ from app.modules.documents.infra.database.note_model import ClassroomNoteModel
 
 config = context.config
 
-# Check environment for database URL override (Render/production compatibility)
 env_db_url = os.getenv("DATABASE_URL") or os.getenv("DB_URL")
 if env_db_url:
     if env_db_url.startswith("postgres://"):
-        env_db_url = env_db_url.replace("postgres://", "postgresql://", 1)
+        env_db_url = env_db_url.replace("postgres://", "postgresql+psycopg://", 1)
+    elif env_db_url.startswith("postgresql://") and not env_db_url.startswith("postgresql+psycopg"):
+        env_db_url = env_db_url.replace("postgresql://", "postgresql+psycopg://", 1)
     if "+asyncpg" in env_db_url:
-        env_db_url = env_db_url.replace("+asyncpg", "")
+        env_db_url = env_db_url.replace("+asyncpg", "+psycopg")
     config.set_main_option("sqlalchemy.url", env_db_url)
 
-# Interpret the config file for Python logging.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
@@ -53,8 +53,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    configuration = config.get_section(config.config_ini_section, {})
+    url = config.get_main_option("sqlalchemy.url")
+    if url:
+        configuration["sqlalchemy.url"] = url
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
