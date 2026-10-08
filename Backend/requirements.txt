@@ -28,6 +28,7 @@ PyJWT
 passlib[bcrypt]
 bcrypt
 python-multipart
+argon2-cffi
 
 # ===========================
 # Validation & Settings
@@ -53,6 +54,7 @@ orjson
 # ===========================
 python-dateutil
 tenacity
+python-slugify
 
 # ===========================
 # Logging
@@ -100,3 +102,4 @@ apscheduler
 # ===========================
 prometheus-fastapi-instrumentator
 boto3
+botocore
