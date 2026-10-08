@@ -298,7 +298,12 @@ Gradify Collective — The Academic Operating System.
     async def _send_via_resend(self, subject: str, plain_text: str, html_content: str, recipient: str) -> bool:
         if not settings.RESEND_API_KEY:
             return False
-        sender_addr = self.sender_email or "onboarding@resend.dev"
+        raw_addr = (self.sender_email or "").strip()
+        if "<" in raw_addr and ">" in raw_addr:
+            raw_addr = raw_addr.split("<")[-1].split(">")[0].strip()
+        if not raw_addr or "@" not in raw_addr:
+            raw_addr = "onboarding@resend.dev"
+        from_header = f"Gradify <{raw_addr}>"
         async with httpx.AsyncClient(timeout=15.0) as client:
             res = await client.post(
                 "https://api.resend.com/emails",
@@ -307,7 +312,7 @@ Gradify Collective — The Academic Operating System.
                     "Content-Type": "application/json",
                 },
                 json={
-                    "from": f"Gradify <{sender_addr}>",
+                    "from": from_header,
                     "to": [recipient],
                     "subject": subject,
                     "text": plain_text,
@@ -323,7 +328,11 @@ Gradify Collective — The Academic Operating System.
     async def _send_via_brevo(self, subject: str, plain_text: str, html_content: str, recipient: str) -> bool:
         if not settings.BREVO_API_KEY:
             return False
-        sender_addr = self.sender_email or self.username
+        raw_addr = (self.sender_email or self.username or "").strip()
+        if "<" in raw_addr and ">" in raw_addr:
+            raw_addr = raw_addr.split("<")[-1].split(">")[0].strip()
+        if not raw_addr or "@" not in raw_addr:
+            return False
         async with httpx.AsyncClient(timeout=15.0) as client:
             res = await client.post(
                 "https://api.brevo.com/v3/smtp/email",
@@ -333,7 +342,7 @@ Gradify Collective — The Academic Operating System.
                     "accept": "application/json",
                 },
                 json={
-                    "sender": {"name": "Gradify", "email": sender_addr},
+                    "sender": {"name": "Gradify", "email": raw_addr},
                     "to": [{"email": recipient}],
                     "subject": subject,
                     "textContent": plain_text,
