@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     EMAIL_HOST_PASSWORD: str | None = None
     SMTP_USER: str | None = None
     SMTP_PASS: str | None = None
+    RESEND_API_KEY: str | None = None
+    BREVO_API_KEY: str | None = None
     FRONTEND_URL: str = "http://localhost:5173"
     B2_ENDPOINT_URL: str = ""
     B2_APPLICATION_KEY_ID: str = ""

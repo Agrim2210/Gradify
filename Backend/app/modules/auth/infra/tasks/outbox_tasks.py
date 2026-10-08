@@ -42,16 +42,17 @@ def dispatch_pending() -> int:
 
 
 async def _dispatch_pending_events_direct() -> int:
-    if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
-        print("[OUTBOX WARNING] Direct email dispatch skipped: SMTP_USERNAME or SMTP_PASSWORD is not configured in environment.")
+    has_credentials = bool((settings.SMTP_USERNAME and settings.SMTP_PASSWORD) or settings.RESEND_API_KEY or settings.BREVO_API_KEY)
+    if not has_credentials:
+        print("[OUTBOX WARNING] Direct email dispatch skipped: No email credentials configured (SMTP, RESEND_API_KEY, or BREVO_API_KEY).")
         return 0
 
     sender = SMTPEmailSender(
         host=settings.SMTP_HOST,
         port=settings.SMTP_PORT,
-        username=settings.SMTP_USERNAME,
-        password=settings.SMTP_PASSWORD,
-        sender_email=settings.SMTP_SENDER_EMAIL or settings.SMTP_USERNAME,
+        username=settings.SMTP_USERNAME or "",
+        password=settings.SMTP_PASSWORD or "",
+        sender_email=settings.SMTP_SENDER_EMAIL or settings.SMTP_USERNAME or "",
     )
 
     async with SessionLocal() as session:

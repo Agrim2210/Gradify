@@ -32,19 +32,27 @@ async def _deliver_verification_email(event_id: str) -> None:
         await session.commit()
 
 
+def _has_email_credentials() -> bool:
+    return bool((settings.SMTP_USERNAME and settings.SMTP_PASSWORD) or settings.RESEND_API_KEY or settings.BREVO_API_KEY)
+
+
+def _get_email_sender() -> SMTPEmailSender:
+    return SMTPEmailSender(
+        host=settings.SMTP_HOST,
+        port=settings.SMTP_PORT,
+        username=settings.SMTP_USERNAME or "",
+        password=settings.SMTP_PASSWORD or "",
+        sender_email=settings.SMTP_SENDER_EMAIL or settings.SMTP_USERNAME or "",
+    )
+
+
 async def deliver_direct_verification_email_bg(email: str, raw_token: str, event_id: str | None = None) -> None:
     try:
-        if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
-            print("[AUTH ERROR] SMTP_USERNAME and SMTP_PASSWORD are not configured in settings")
+        if not _has_email_credentials():
+            print("[AUTH ERROR] No email credentials configured in settings (SMTP, RESEND_API_KEY, or BREVO_API_KEY)")
             return
 
-        sender = SMTPEmailSender(
-            host=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USERNAME,
-            password=settings.SMTP_PASSWORD,
-            sender_email=settings.SMTP_SENDER_EMAIL or settings.SMTP_USERNAME,
-        )
+        sender = _get_email_sender()
         payload = Payload(email=email, raw_token=raw_token)
         await sender.send_email(payload)
         print(f"[AUTH] Successfully dispatched verification email to {email}")
@@ -76,17 +84,11 @@ async def deliver_verification_email_bg(event_id: str) -> None:
 
 async def deliver_workspace_invitation_email_bg(email: str, workspace_name: str, role: str, invitation_url: str) -> None:
     try:
-        if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
-            print("[INVITE ERROR] SMTP credentials not configured in settings")
+        if not _has_email_credentials():
+            print("[INVITE ERROR] No email credentials configured in settings")
             return
 
-        sender = SMTPEmailSender(
-            host=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USERNAME,
-            password=settings.SMTP_PASSWORD,
-            sender_email=settings.SMTP_SENDER_EMAIL or settings.SMTP_USERNAME,
-        )
+        sender = _get_email_sender()
         payload = Payload(
             email=email,
             invitation_url=invitation_url,
@@ -102,17 +104,11 @@ async def deliver_workspace_invitation_email_bg(email: str, workspace_name: str,
 
 async def deliver_classroom_invitation_email_bg(email: str, classroom_name: str, invitation_url: str) -> None:
     try:
-        if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
-            print("[CLASSROOM INVITE ERROR] SMTP credentials not configured in settings")
+        if not _has_email_credentials():
+            print("[CLASSROOM INVITE ERROR] No email credentials configured in settings")
             return
 
-        sender = SMTPEmailSender(
-            host=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USERNAME,
-            password=settings.SMTP_PASSWORD,
-            sender_email=settings.SMTP_SENDER_EMAIL or settings.SMTP_USERNAME,
-        )
+        sender = _get_email_sender()
         payload = Payload(
             email=email,
             classroom_invitation_url=invitation_url,
@@ -127,17 +123,11 @@ async def deliver_classroom_invitation_email_bg(email: str, classroom_name: str,
 
 async def deliver_note_upload_notification_bg(student_emails: list[str], classroom_name: str, note_title: str, note_url: str) -> None:
     try:
-        if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
-            print("[NOTE NOTIFY ERROR] SMTP credentials not configured in settings")
+        if not _has_email_credentials():
+            print("[NOTE NOTIFY ERROR] No email credentials configured in settings")
             return
 
-        sender = SMTPEmailSender(
-            host=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USERNAME,
-            password=settings.SMTP_PASSWORD,
-            sender_email=settings.SMTP_SENDER_EMAIL or settings.SMTP_USERNAME,
-        )
+        sender = _get_email_sender()
         for email in student_emails:
             payload = Payload(
                 email=email,
@@ -157,17 +147,11 @@ async def deliver_note_upload_notification_bg(student_emails: list[str], classro
 
 async def deliver_password_reset_email_bg(email: str, reset_url: str, event_id: str | None = None) -> None:
     try:
-        if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
-            print("[PASSWORD RESET ERROR] SMTP credentials not configured in settings")
+        if not _has_email_credentials():
+            print("[PASSWORD RESET ERROR] No email credentials configured in settings")
             return
 
-        sender = SMTPEmailSender(
-            host=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USERNAME,
-            password=settings.SMTP_PASSWORD,
-            sender_email=settings.SMTP_SENDER_EMAIL or settings.SMTP_USERNAME,
-        )
+        sender = _get_email_sender()
         payload = Payload(
             email=email,
             reset_url=reset_url,

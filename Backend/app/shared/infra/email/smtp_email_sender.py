@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from email.message import EmailMessage
 import aiosmtplib
+import httpx
 from app.modules.auth.application.dto.outbox_dto import Payload
 from app.shared.application.email.email_sender import EmailSender
 from app.core.config import settings
@@ -13,20 +14,15 @@ class SMTPEmailSender(EmailSender):
     password: str
     sender_email: str
 
-    async def send_email(self, payload: Payload):
-        message = EmailMessage()
+    def _build_email_content(self, payload: Payload) -> tuple[str, str, str]:
         sender_addr = self.sender_email or self.username
-        message["From"] = f"Gradify <{sender_addr}>"
-        message["To"] = payload.email
-        message["Reply-To"] = sender_addr
-
-
         if payload.reset_url:
-            message["Subject"] = "Reset your Gradify password"
-            message.set_content(f"Reset your password: {payload.reset_url}")
+            subject = "Reset your Gradify password"
+            plain_text = f"Reset your password: {payload.reset_url}"
+            html_content = f"<p>Reset your password: <a href='{payload.reset_url}'>{payload.reset_url}</a></p>"
         elif payload.invitation_url:
             role_display = (payload.role or "Faculty Teacher").replace("_", " ").title()
-            message["Subject"] = f"Academic Invitation: Join {payload.workspace_name} as {role_display} | Gradify"
+            subject = f"Academic Invitation: Join {payload.workspace_name} as {role_display} | Gradify"
             plain_text = f"""Welcome to Gradify.
 
 You have been invited to join the academic workspace: {payload.workspace_name}
@@ -49,9 +45,7 @@ Gradify Collective — The Academic Operating System.
   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #000000; padding: 40px 15px;">
     <tr>
       <td align="center">
-        <!-- Main Card -->
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #101010; border: 1px solid rgba(222, 219, 200, 0.18); border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.85);">
-          <!-- Top Header -->
           <tr>
             <td style="padding: 35px 35px 15px 35px; text-align: center;">
               <div style="display: inline-block; padding: 6px 14px; background-color: rgba(222, 219, 200, 0.08); border: 1px solid rgba(222, 219, 200, 0.2); border-radius: 9999px; font-size: 11px; letter-spacing: 2px; color: #DEDBC8; text-transform: uppercase; font-weight: 600;">
@@ -65,22 +59,16 @@ Gradify Collective — The Academic Operating System.
               </p>
             </td>
           </tr>
-
-          <!-- Divider -->
           <tr>
             <td style="padding: 0 35px;">
               <div style="height: 1px; background-color: rgba(255, 255, 255, 0.08); margin: 20px 0;"></div>
             </td>
           </tr>
-
-          <!-- Body Content -->
           <tr>
             <td style="padding: 0 35px 30px 35px; text-align: left;">
               <p style="color: #c7c6b7; font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">
                 You have been formally invited to join the academic workspace:
               </p>
-
-              <!-- Workspace Info Box -->
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #161616; border: 1px solid rgba(222, 219, 200, 0.12); border-radius: 16px; margin: 0 0 25px 0;">
                 <tr>
                   <td style="padding: 18px 22px;">
@@ -96,12 +84,9 @@ Gradify Collective — The Academic Operating System.
                   </td>
                 </tr>
               </table>
-
               <p style="color: #c7c6b7; font-size: 14px; line-height: 1.6; margin: 0 0 25px 0;">
                 To accept this seat, please click the button below to set your account password and immediately access your workspace cockpit:
               </p>
-
-              <!-- CTA Button -->
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 25px 0 25px 0;">
                 <tr>
                   <td align="center">
@@ -111,14 +96,11 @@ Gradify Collective — The Academic Operating System.
                   </td>
                 </tr>
               </table>
-
               <p style="color: #777770; font-size: 12px; line-height: 1.6; margin: 20px 0 0 0; text-align: center;">
                 Once your password is set, you can seamlessly sign in to Gradify at any time. This link is encrypted and secure.
               </p>
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
             <td style="background-color: #0b0b0b; padding: 20px 35px; border-top: 1px solid rgba(255, 255, 255, 0.06); text-align: center;">
               <p style="color: #555550; font-size: 11px; margin: 0; font-family: monospace;">
@@ -133,10 +115,8 @@ Gradify Collective — The Academic Operating System.
 </body>
 </html>
 """
-            message.set_content(plain_text)
-            message.add_alternative(html_content, subtype="html")
         elif payload.classroom_invitation_url:
-            message["Subject"] = f"You're Invited to Join {payload.classroom_name} — Gradify Classroom"
+            subject = f"You're Invited to Join {payload.classroom_name} — Gradify Classroom"
             plain_text = f"""Welcome to Gradify.
 
 You have been invited to join the academic classroom: {payload.classroom_name}
@@ -228,19 +208,18 @@ Gradify Collective — The Academic Operating System.
 </body>
 </html>
 """
-            message.set_content(plain_text)
-            message.add_alternative(html_content, subtype="html")
         elif payload.note_title:
-            message["Subject"] = f"New notes uploaded in {payload.classroom_name}: {payload.note_title}"
+            subject = f"New notes uploaded in {payload.classroom_name}: {payload.note_title}"
             body = f"Hello,\n\nYour teacher has uploaded new notes '{payload.note_title}' in classroom '{payload.classroom_name}'."
             if payload.note_url:
                 body += f"\n\nYou can access the notes here: {payload.note_url}"
-            message.set_content(body)
+            plain_text = body
+            html_content = f"<p>Hello,</p><p>Your teacher has uploaded new notes <strong>'{payload.note_title}'</strong> in classroom <strong>'{payload.classroom_name}'</strong>.</p>"
+            if payload.note_url:
+                html_content += f"<p><a href='{payload.note_url}'>View Notes</a></p>"
         else:
-            # Cinematic Verification Email matching Gradify Landing Page
             verify_url = f"{settings.FRONTEND_URL}/?token={payload.raw_token}&email={payload.email}"
-            message["Subject"] = "Activate Your Gradify Identity — Verification Required"
-
+            subject = "Activate Your Gradify Identity — Verification Required"
             plain_text = f"""Welcome to Gradify.
 
 Turn Your College Chaos Into Smarter Academic Workflow.
@@ -262,9 +241,7 @@ Gradify Collective — The Academic Operating System.
   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #000000; padding: 40px 15px;">
     <tr>
       <td align="center">
-        <!-- Main Card -->
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #101010; border: 1px solid rgba(222, 219, 200, 0.15); border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
-          <!-- Top Accent Header -->
           <tr>
             <td style="padding: 35px 35px 15px 35px; text-align: center;">
               <div style="display: inline-block; padding: 6px 14px; background-color: rgba(222, 219, 200, 0.08); border: 1px solid rgba(222, 219, 200, 0.2); border-radius: 9999px; font-size: 11px; letter-spacing: 2px; color: #DEDBC8; text-transform: uppercase; font-weight: 600;">
@@ -278,22 +255,16 @@ Gradify Collective — The Academic Operating System.
               </p>
             </td>
           </tr>
-
-          <!-- Divider -->
           <tr>
             <td style="padding: 0 35px;">
               <div style="height: 1px; background-color: rgba(255, 255, 255, 0.08); margin: 20px 0;"></div>
             </td>
           </tr>
-
-          <!-- Body Content -->
           <tr>
             <td style="padding: 0 35px 30px 35px; text-align: left;">
               <p style="color: #c7c6b7; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
                 Welcome to <strong style="color: #DEDBC8;">Gradify</strong>. Before you can access your personalized cockpit, automated streak intelligence, and curriculum workspace, please confirm your academic email address.
               </p>
-
-              <!-- CTA Button -->
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 25px 0 25px 0;">
                 <tr>
                   <td align="center">
@@ -303,14 +274,11 @@ Gradify Collective — The Academic Operating System.
                   </td>
                 </tr>
               </table>
-
               <p style="color: #777770; font-size: 12px; line-height: 1.6; margin: 20px 0 0 0; text-align: center;">
                 Clicking the button immediately verifies your academic account, logs you in, and grants access to your workspace cockpit. Valid for 30 minutes.
               </p>
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
             <td style="background-color: #0b0b0b; padding: 20px 35px; border-top: 1px solid rgba(255, 255, 255, 0.06); text-align: center;">
               <p style="color: #555550; font-size: 11px; margin: 0; font-family: monospace;">
@@ -325,7 +293,80 @@ Gradify Collective — The Academic Operating System.
 </body>
 </html>
 """
-            message.set_content(plain_text)
+        return subject, plain_text, html_content
+
+    async def _send_via_resend(self, subject: str, plain_text: str, html_content: str, recipient: str) -> bool:
+        if not settings.RESEND_API_KEY:
+            return False
+        sender_addr = self.sender_email or "onboarding@resend.dev"
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {settings.RESEND_API_KEY.strip()}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": f"Gradify <{sender_addr}>",
+                    "to": [recipient],
+                    "subject": subject,
+                    "text": plain_text,
+                    "html": html_content,
+                },
+            )
+            if res.status_code in {200, 201, 202}:
+                print(f"[RESEND SUCCESS] Email delivered via HTTP to {recipient}: {res.json()}")
+                return True
+            print(f"[RESEND ERROR] Status {res.status_code}: {res.text}")
+            return False
+
+    async def _send_via_brevo(self, subject: str, plain_text: str, html_content: str, recipient: str) -> bool:
+        if not settings.BREVO_API_KEY:
+            return False
+        sender_addr = self.sender_email or self.username
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key": settings.BREVO_API_KEY.strip(),
+                    "Content-Type": "application/json",
+                    "accept": "application/json",
+                },
+                json={
+                    "sender": {"name": "Gradify", "email": sender_addr},
+                    "to": [{"email": recipient}],
+                    "subject": subject,
+                    "textContent": plain_text,
+                    "htmlContent": html_content,
+                },
+            )
+            if res.status_code in {200, 201, 202}:
+                print(f"[BREVO SUCCESS] Email delivered via HTTP to {recipient}: {res.json()}")
+                return True
+            print(f"[BREVO ERROR] Status {res.status_code}: {res.text}")
+            return False
+
+    async def send_email(self, payload: Payload):
+        subject, plain_text, html_content = self._build_email_content(payload)
+
+        if settings.RESEND_API_KEY:
+            sent = await self._send_via_resend(subject, plain_text, html_content, payload.email)
+            if sent:
+                return
+
+        if settings.BREVO_API_KEY:
+            sent = await self._send_via_brevo(subject, plain_text, html_content, payload.email)
+            if sent:
+                return
+
+        message = EmailMessage()
+        sender_addr = self.sender_email or self.username
+        message["From"] = f"Gradify <{sender_addr}>"
+        message["To"] = payload.email
+        message["Reply-To"] = sender_addr
+        message["Subject"] = subject
+        message.set_content(plain_text)
+        if html_content and not payload.note_title:
             message.add_alternative(html_content, subtype="html")
 
         username = self.username.strip() if self.username else ""
@@ -343,7 +384,7 @@ Gradify Collective — The Academic Operating System.
             password=password,
             use_tls=use_tls,
             start_tls=start_tls,
-            timeout=30,
+            timeout=15,
         )
         print(f"[SMTP SUCCESS] Email delivered to {payload.email}: {res}")
 
