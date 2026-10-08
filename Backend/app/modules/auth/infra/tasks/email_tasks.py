@@ -1,9 +1,10 @@
-"""Celery delivery adapter for auth verification-email events."""
 import asyncio
 from uuid import UUID
+import traceback
 
 from app.core.config import settings
 from app.infra.database.session import SessionLocal
+from app.modules.auth.application.dto.outbox_dto import Payload
 from app.modules.auth.infra.persistent.repositories.sqlalchemy_outbox_repository import SQLAlchemyOutboxRepository
 from app.shared.infra.celery.app import celery_app
 from app.shared.infra.email.smtp_email_sender import SMTPEmailSender
@@ -31,11 +32,7 @@ async def _deliver_verification_email(event_id: str) -> None:
         await session.commit()
 
 
-from app.modules.auth.application.dto.outbox_dto import Payload
-import traceback
-
 async def deliver_direct_verification_email_bg(email: str, raw_token: str, event_id: str | None = None) -> None:
-    """Dispatches verification email directly via FastAPI BackgroundTasks with zero-dependency execution."""
     try:
         if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
             print("[AUTH ERROR] SMTP_USERNAME and SMTP_PASSWORD are not configured in settings")
@@ -67,8 +64,8 @@ async def deliver_direct_verification_email_bg(email: str, raw_token: str, event
         print(f"[AUTH ERROR] Failed to send verification email to {email}: {e}")
         traceback.print_exc()
 
+
 async def deliver_verification_email_bg(event_id: str) -> None:
-    """Dispatches verification email directly via FastAPI BackgroundTasks with error handling."""
     try:
         await _deliver_verification_email(event_id)
         print(f"[AUTH] Successfully sent verification email for event {event_id}")
@@ -78,7 +75,6 @@ async def deliver_verification_email_bg(event_id: str) -> None:
 
 
 async def deliver_workspace_invitation_email_bg(email: str, workspace_name: str, role: str, invitation_url: str) -> None:
-    """Dispatches workspace invitation email directly via FastAPI BackgroundTasks."""
     try:
         if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
             print("[INVITE ERROR] SMTP credentials not configured in settings")
@@ -105,7 +101,6 @@ async def deliver_workspace_invitation_email_bg(email: str, workspace_name: str,
 
 
 async def deliver_classroom_invitation_email_bg(email: str, classroom_name: str, invitation_url: str) -> None:
-    """Dispatches classroom student invitation email directly via FastAPI BackgroundTasks."""
     try:
         if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
             print("[CLASSROOM INVITE ERROR] SMTP credentials not configured in settings")
@@ -130,9 +125,37 @@ async def deliver_classroom_invitation_email_bg(email: str, classroom_name: str,
         traceback.print_exc()
 
 
+async def deliver_note_upload_notification_bg(student_emails: list[str], classroom_name: str, note_title: str, note_url: str) -> None:
+    try:
+        if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
+            print("[NOTE NOTIFY ERROR] SMTP credentials not configured in settings")
+            return
+
+        sender = SMTPEmailSender(
+            host=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USERNAME,
+            password=settings.SMTP_PASSWORD,
+            sender_email=settings.SMTP_SENDER_EMAIL or settings.SMTP_USERNAME,
+        )
+        for email in student_emails:
+            payload = Payload(
+                email=email,
+                classroom_name=classroom_name,
+                note_title=note_title,
+                note_url=note_url,
+            )
+            try:
+                await sender.send_email(payload)
+                print(f"[NOTE NOTIFY SUCCESS] Note notification dispatched to {email} for '{note_title}'")
+            except Exception as single_err:
+                print(f"[NOTE NOTIFY ERROR] Failed to deliver note notification to {email}: {single_err}")
+    except Exception as e:
+        print(f"[NOTE NOTIFY ERROR] Error during note upload notification batch: {e}")
+        traceback.print_exc()
+
 
 async def deliver_password_reset_email_bg(email: str, reset_url: str, event_id: str | None = None) -> None:
-    """Dispatches password reset email directly via FastAPI BackgroundTasks."""
     try:
         if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
             print("[PASSWORD RESET ERROR] SMTP credentials not configured in settings")

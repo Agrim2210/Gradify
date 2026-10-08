@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_SENDER_EMAIL: str | None = None
+    EMAIL_FROM: str | None = None
+    EMAIL_HOST_USER: str | None = None
+    EMAIL_HOST_PASSWORD: str | None = None
+    SMTP_USER: str | None = None
+    SMTP_PASS: str | None = None
     FRONTEND_URL: str = "http://localhost:5173"
     B2_ENDPOINT_URL: str = ""
     B2_APPLICATION_KEY_ID: str = ""
@@ -39,6 +44,9 @@ class Settings(BaseSettings):
         elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         self.DB_URL = url
+        self.SMTP_USERNAME = self.SMTP_USERNAME or self.SMTP_USER or self.EMAIL_HOST_USER or self.EMAIL_FROM
+        self.SMTP_PASSWORD = self.SMTP_PASSWORD or self.SMTP_PASS or self.EMAIL_HOST_PASSWORD
+        self.SMTP_SENDER_EMAIL = self.SMTP_SENDER_EMAIL or self.EMAIL_FROM or self.SMTP_USERNAME
         return self
 
 

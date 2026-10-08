@@ -45,7 +45,6 @@ class UploadNoteUseCase:
         if classroom is None:
             raise ClassroomNotFound()
 
-        # Check permissions: workspace OWNER, classroom creator, assigned teacher, or classroom OWNER
         from app.modules.workspace.infra.database.membership_sql import WorkspaceMembershipModel
         from app.modules.workspace.domain.enums.workspace_role import WorkspaceRole
         ws_mem = (
@@ -114,7 +113,7 @@ class UploadNoteUseCase:
                 ClassroomMembershipModel.role == ClassroomRole.STUDENT,
             )
         )
-        student_emails = (await self._session.execute(student_stmt)).scalars().all()
+        student_emails = list((await self._session.execute(student_stmt)).scalars().all())
 
         note_url = f"{settings.FRONTEND_URL.rstrip('/')}/classrooms/{command.classroom_id}/notes"
 
@@ -147,4 +146,6 @@ class UploadNoteUseCase:
             created_at=note.created_at,
             view_url=view_url,
             download_url=download_url,
+            student_emails=student_emails,
+            classroom_name=classroom.name,
         )

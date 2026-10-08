@@ -1,8 +1,9 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from app.modules.auth.bootstrap.dependencies import get_current_user
+from app.modules.auth.infra.tasks.email_tasks import deliver_note_upload_notification_bg
 from app.modules.documents.api.schema.response_schema import NoteResponse
 from app.modules.documents.application.dto.note_dto import UploadNoteCommand
 from app.modules.documents.application.usecase.get_note_usecase import GetNoteUseCase
@@ -21,6 +22,7 @@ router = APIRouter(tags=["Documents"])
 @router.post("/classrooms/{classroom_id}/notes", response_model=NoteResponse, status_code=201)
 async def upload_note(
     classroom_id: UUID,
+    background_tasks: BackgroundTasks,
     title: str = Form(...),
     description: str | None = Form(None),
     file: UploadFile = File(...),
@@ -38,6 +40,14 @@ async def upload_note(
         file_obj=file.file,
     )
     result = await usecase.execute(command)
+    if result.student_emails:
+        background_tasks.add_task(
+            deliver_note_upload_notification_bg,
+            student_emails=result.student_emails,
+            classroom_name=result.classroom_name or "Classroom",
+            note_title=result.title,
+            note_url=result.view_url or "",
+        )
     return NoteResponse(
         id=result.id,
         classroom_id=result.classroom_id,
@@ -122,8 +132,6 @@ async def download_note(
     result = await usecase.execute(classroom_id, note_id, current_user.id)
     return RedirectResponse(url=result.download_url, status_code=307)
 
-
-# ─── Assignment Endpoints ──────────────────────────────────────────────────────
 
 @router.post("/classrooms/{classroom_id}/assignments", status_code=201)
 async def create_assignment(

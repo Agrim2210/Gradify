@@ -1,4 +1,3 @@
-"""Auth outbox dispatcher, supporting both direct in-process SMTP and Celery."""
 import asyncio
 
 from app.core.config import settings
@@ -10,7 +9,6 @@ from app.shared.infra.email.smtp_email_sender import SMTPEmailSender
 
 
 async def _dispatch_pending_events() -> int:
-    """Dispatches pending events to Celery queue (for Celery Beat / Worker deployments)."""
     async with SessionLocal() as session:
         repository = SQLAlchemyOutboxRepository(session)
         events = await repository.get_pending(settings.CELERY_OUTBOX_BATCH_SIZE)
@@ -44,8 +42,8 @@ def dispatch_pending() -> int:
 
 
 async def _dispatch_pending_events_direct() -> int:
-    """Dispatches pending outbox events directly via SMTPEmailSender without Celery."""
     if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
+        print("[OUTBOX WARNING] Direct email dispatch skipped: SMTP_USERNAME or SMTP_PASSWORD is not configured in environment.")
         return 0
 
     sender = SMTPEmailSender(
@@ -59,6 +57,8 @@ async def _dispatch_pending_events_direct() -> int:
     async with SessionLocal() as session:
         repository = SQLAlchemyOutboxRepository(session)
         events = await repository.get_pending(settings.CELERY_OUTBOX_BATCH_SIZE)
+        if not events:
+            return 0
         dispatched = 0
         for event in events:
             try:
@@ -70,18 +70,17 @@ async def _dispatch_pending_events_direct() -> int:
                 print(f"[DIRECT OUTBOX ERROR] Failed to dispatch event {event.id}: {exc}")
                 event.mark_failed(str(exc))
                 await repository.update(event)
-        if dispatched > 0:
-            await session.commit()
+        await session.commit()
         return dispatched
 
 
 async def run_inprocess_outbox_loop():
-    """Background polling loop for FastAPI lifespan to process outbox directly."""
+    print(f"[OUTBOX POLLER] Starting in-process direct outbox loop (polling every {settings.CELERY_OUTBOX_POLL_SECONDS}s)...")
     while True:
         try:
-            await asyncio.sleep(settings.CELERY_OUTBOX_POLL_SECONDS)
             if settings.ENABLE_INPROCESS_OUTBOX_POLLER:
                 await _dispatch_pending_events_direct()
+            await asyncio.sleep(settings.CELERY_OUTBOX_POLL_SECONDS)
         except asyncio.CancelledError:
             break
         except Exception as e:

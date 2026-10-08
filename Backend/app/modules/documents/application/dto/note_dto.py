@@ -29,3 +29,5 @@ class NoteResponseDTO:
     created_at: datetime
     view_url: str | None = None
     download_url: str | None = None
+    student_emails: list[str] | None = None
+    classroom_name: str | None = None

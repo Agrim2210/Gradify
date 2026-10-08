@@ -328,14 +328,21 @@ Gradify Collective — The Academic Operating System.
             message.set_content(plain_text)
             message.add_alternative(html_content, subtype="html")
 
-        print(f"[SMTP] Dispatching email to {payload.email} via {self.host}:{self.port}...")
+        username = self.username.strip() if self.username else ""
+        password = self.password.replace(" ", "").strip() if self.password else ""
+        port = int(self.port) if self.port else 587
+        use_tls = (port == 465)
+        start_tls = (port == 587)
+
+        print(f"[SMTP] Dispatching email to {payload.email} via {self.host}:{port} (use_tls={use_tls}, start_tls={start_tls})...")
         res = await aiosmtplib.send(
             message,
             hostname=self.host,
-            port=self.port,
-            username=self.username,
-            password=self.password,
-            start_tls=True,
+            port=port,
+            username=username,
+            password=password,
+            use_tls=use_tls,
+            start_tls=start_tls,
             timeout=30,
         )
         print(f"[SMTP SUCCESS] Email delivered to {payload.email}: {res}")
