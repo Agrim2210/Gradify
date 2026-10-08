@@ -358,13 +358,13 @@ Gradify Collective — The Academic Operating System.
     async def send_email(self, payload: Payload):
         subject, plain_text, html_content = self._build_email_content(payload)
 
-        if settings.RESEND_API_KEY:
-            sent = await self._send_via_resend(subject, plain_text, html_content, payload.email)
+        if settings.BREVO_API_KEY:
+            sent = await self._send_via_brevo(subject, plain_text, html_content, payload.email)
             if sent:
                 return
 
-        if settings.BREVO_API_KEY:
-            sent = await self._send_via_brevo(subject, plain_text, html_content, payload.email)
+        if settings.RESEND_API_KEY:
+            sent = await self._send_via_resend(subject, plain_text, html_content, payload.email)
             if sent:
                 return
 
