@@ -107,7 +107,7 @@ class SQLAlchemyOutboxRepository(
     def _to_entity(
         self,
         model: OutboxEventModel,
-    ) -> OutboxEvent:
+    ) -> OutBoxEvent:
     
         return OutBoxEvent(
     

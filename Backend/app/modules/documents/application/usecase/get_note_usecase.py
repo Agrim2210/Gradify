@@ -9,6 +9,7 @@ from app.modules.documents.domain.exception.exception import (
 )
 from app.modules.documents.domain.repositories.note_repo import NoteRepo
 from app.modules.documents.domain.repositories.storage_service import StorageService
+from app.modules.workspace.domain.enums.classroom_role import ClassroomRole
 from app.modules.workspace.infra.database.classroom_models import ClassroomMembershipModel, ClassroomModel
 
 
@@ -41,7 +42,6 @@ class GetNoteUseCase:
         if ws_membership is None:
             raise ClassroomAccessDenied()
 
-        # Teachers can only view notes for classrooms assigned to them or created by them
         if ws_membership.role == WorkspaceRole.TEACHER:
             if classroom.created_by_user_id != user_id and classroom.assigned_teacher_id != user_id:
                 mem = (
