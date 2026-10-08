@@ -2,7 +2,7 @@ from uuid import UUID,uuid4
 from datetime import datetime,timedelta
 from ...application.enums.outbox_enum import EventType,Status
 class OutBoxEvent:
-    def __init__(self,id:UUID,event_type:EventType,payload:dict,status:Status,created_at:datetime,retry_count:int|0,next_retry:datetime|None,last_error_message:str|None,published_at:datetime|None):
+    def __init__(self,id:UUID,event_type:EventType,payload:dict,status:Status,created_at:datetime,retry_count:int=0,next_retry:datetime|None=None,last_error_message:str|None=None,published_at:datetime|None=None):
         self.id=id
         self.event_type=event_type
         self.payload=payload
